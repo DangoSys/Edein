@@ -1,0 +1,168 @@
+.eda-root {
+  height: 100%;
+  display: grid;
+  grid-template-rows: 48px 1fr 210px;
+  background: #0f1218;
+  color: #d5deea;
+}
+
+.eda-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-bottom: 1px solid #2a3240;
+  background: #171b23;
+}
+
+.brand {
+  font-weight: 600;
+  color: #7bb7ff;
+}
+
+.tool-btns {
+  display: flex;
+  gap: 8px;
+}
+
+.tool-btns button,
+.ball-item,
+.action-col button {
+  background: #273142;
+  color: #d5deea;
+  border: 1px solid #3a4b63;
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.tool-btns button:disabled,
+.action-col button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.eda-body {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 220px 1fr 280px;
+}
+
+.eda-left,
+.eda-right {
+  padding: 10px;
+  background: #161a22;
+}
+
+.eda-left {
+  border-right: 1px solid #27303d;
+}
+
+.eda-right {
+  border-left: 1px solid #27303d;
+}
+
+.panel-title {
+  margin-bottom: 8px;
+  color: #8ca7ca;
+  font-size: 13px;
+}
+
+.ball-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ball-item {
+  text-align: left;
+  display: grid;
+  gap: 2px;
+}
+
+.ball-item small {
+  color: #9fb2cd;
+}
+
+.eda-canvas {
+  min-width: 0;
+  min-height: 0;
+  background: #0f131a;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.hint {
+  color: #9fb2cd;
+  font-size: 13px;
+}
+
+.err {
+  margin-bottom: 10px;
+  color: #ff7f8f;
+  font-size: 12px;
+}
+
+.action-col {
+  display: grid;
+  gap: 8px;
+}
+
+.eda-bottom {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid #27303d;
+  background: #131822;
+}
+
+.log-box,
+.code-box {
+  min-height: 0;
+  padding: 10px;
+}
+
+.log-box {
+  border-right: 1px solid #27303d;
+}
+
+.logs {
+  height: calc(100% - 24px);
+  overflow: auto;
+  display: grid;
+  gap: 4px;
+}
+
+.log {
+  display: grid;
+  grid-template-columns: 62px 120px 1fr;
+  gap: 8px;
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: #1a2130;
+}
+
+.log.ok {
+  border: 1px solid #2f7a52;
+}
+
+.log.err {
+  border: 1px solid #8a3d48;
+}
+
+.code-box pre {
+  height: calc(100% - 24px);
+  margin: 0;
+  overflow: auto;
+  padding: 8px;
+  background: #0f131c;
+  border: 1px solid #27303d;
+  color: #c5d5ed;
+  font-size: 12px;
+}
