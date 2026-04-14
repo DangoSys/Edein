@@ -2,3 +2,15 @@ target/
 node_modules/
 result
 
+# wasm build output
+web/pkg/
+
+# frontend build output
+web/dist/
+
+# python
+server/.venv/
+__pycache__/
+*.pyc
+
+.env/

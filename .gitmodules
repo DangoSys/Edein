@@ -1,0 +1,6 @@
+[submodule "thirdparty/buckyball"]
+	path = thirdparty/buckyball
+	url = https://github.com/DangoSys/buckyball.git
+[submodule "thirdparty/bluefolk"]
+	path = thirdparty/bluefolk
+	url = https://github.com/DangoSys/bluefolk.git
