@@ -1,42 +1,82 @@
-function wait(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
-function cfgSum(cfg) {
-  return Object.values(cfg).reduce((sum, v) => {
-    if (typeof v === 'number') {
-      return sum + v;
-    }
-    return sum + String(v).length;
-  }, 0);
-}
-
-export async function runGenerate(node) {
-  await wait(240);
+function mapNode(node) {
+  if (!node) {
+    return null;
+  }
   return {
-    artifact: `${node.data.type.toLowerCase()}_${node.id}.v`
+    id: node.id,
+    type: node.data?.type,
+    cfg: node.data?.cfg || {}
   };
+}
+
+function mapGraph(nodes, edges) {
+  return {
+    nodes: nodes.map((n) => ({
+      id: n.id,
+      type: n.data?.type,
+      cfg: n.data?.cfg || {}
+    })),
+    edges: edges.map((e) => ({
+      source: e.source,
+      target: e.target
+    }))
+  };
+}
+
+async function runTask(kind, node, nodes, edges) {
+  const response = await fetch(`${API_BASE}/api/tasks`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      kind,
+      node: mapNode(node),
+      graph: mapGraph(nodes, edges)
+    })
+  });
+
+  const body = await response.json();
+  if (!response.ok) {
+    throw new Error(body.detail || 'request failed');
+  }
+  if (body.status !== 'success') {
+    throw new Error(body.error || `${kind} failed`);
+  }
+  return body;
+}
+
+export async function runGenerate(node, nodes, edges) {
+  const task = await runTask('generate', node, nodes, edges);
+  return task.result;
 }
 
 export async function runVerify(node, nodes, edges) {
-  await wait(220);
-  if (edges.length === 0 && nodes.length > 1) {
-    throw new Error('graph has isolated balls');
-  }
-  return {
-    pass: true
-  };
+  const task = await runTask('verify', node, nodes, edges);
+  return task.result;
 }
 
-export async function runEvaluate(node) {
-  await wait(280);
-  const base = cfgSum(node.data.cfg);
-  return {
-    latency: base * 4 + node.data.type.length * 13,
-    area: base * 7 + node.data.type.length * 19
-  };
+export async function runEvaluate(node, nodes, edges) {
+  const task = await runTask('evaluate', node, nodes, edges);
+  return task.result;
+}
+
+export async function sendChat(message, payload) {
+  const response = await fetch(`${API_BASE}/api/chat`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({ message, payload })
+  });
+
+  const body = await response.json();
+  if (!response.ok) {
+    throw new Error(body.detail || 'chat failed');
+  }
+  return body;
 }
 
 export function exportVerilog(nodes, edges) {

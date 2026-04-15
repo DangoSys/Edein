@@ -103,7 +103,13 @@
           type = "app";
           program = toString (pkgs.writeShellScript "edein-run" ''
             set -e
-            export PATH="${rustToolchain}/bin:${pkgs.wasm-pack}/bin:${pkgs.nodejs}/bin:${pkgs.pnpm}/bin:${pkgs.uv}/bin:$PATH"
+            export PATH="${rustToolchain}/bin:${pkgs.wasm-pack}/bin:${pkgs.nodejs}/bin:${pkgs.pnpm}/bin:${pkgs.uv}/bin:${pkgs.mongodb}/bin:$PATH"
+
+            MONGO_DBPATH=".local/mongo"
+            MONGO_LOG="$MONGO_DBPATH/mongod.log"
+            MONGO_STARTED=0
+
+            mkdir -p "$MONGO_DBPATH"
 
             echo "==> building wasm..."
             wasm-pack build web/wasm --target web --out-dir ../pkg
@@ -118,6 +124,13 @@
             uv sync --no-dev
             cd ..
 
+            if mongod --dbpath "$MONGO_DBPATH" --bind_ip 127.0.0.1 --port 27017 --logpath "$MONGO_LOG" --fork; then
+              MONGO_STARTED=1
+              echo "==> started mongo on :27017"
+            else
+              echo "==> mongo already running or failed to start (see $MONGO_LOG)"
+            fi
+
             echo "==> starting servers  web=:${toString webPort}  api=:${toString apiPort}"
 
             cd server
@@ -125,10 +138,18 @@
             API_PID=$!
             cd ..
 
-            trap "kill $API_PID 2>/dev/null; exit" INT TERM
+            cleanup() {
+              kill "$API_PID" 2>/dev/null || true
+              if [ "$MONGO_STARTED" -eq 1 ]; then
+                mongod --shutdown --dbpath "$MONGO_DBPATH" >/dev/null 2>&1 || true
+              fi
+              exit
+            }
+
+            trap cleanup INT TERM
 
             cd web
-            exec pnpm exec vite --host 0.0.0.0 --port ${toString webPort}
+            pnpm exec vite --host 0.0.0.0 --port ${toString webPort}
           '');
         };
 
@@ -139,6 +160,7 @@
             nodejs
             pnpm
             uv
+            mongodb
           ];
         };
       }

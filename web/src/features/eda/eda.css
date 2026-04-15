@@ -1,7 +1,7 @@
 .eda-root {
   height: 100%;
   display: grid;
-  grid-template-rows: 48px 1fr 210px;
+  grid-template-rows: 48px 1fr 280px;
   background: #0f1218;
   color: #d5deea;
 }
@@ -27,7 +27,8 @@
 
 .tool-btns button,
 .ball-item,
-.action-col button {
+.action-col button,
+.chat-form button {
   background: #273142;
   color: #d5deea;
   border: 1px solid #3a4b63;
@@ -37,7 +38,8 @@
 }
 
 .tool-btns button:disabled,
-.action-col button:disabled {
+.action-col button:disabled,
+.chat-form button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
@@ -116,18 +118,20 @@
 .eda-bottom {
   min-height: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   border-top: 1px solid #27303d;
   background: #131822;
 }
 
 .log-box,
-.code-box {
+.code-box,
+.chat-box {
   min-height: 0;
   padding: 10px;
 }
 
-.log-box {
+.log-box,
+.code-box {
   border-right: 1px solid #27303d;
 }
 
@@ -156,8 +160,8 @@
   border: 1px solid #8a3d48;
 }
 
-.code-box pre {
-  height: calc(100% - 24px);
+.code-box pre,
+.chat-item pre {
   margin: 0;
   overflow: auto;
   padding: 8px;
@@ -165,4 +169,82 @@
   border: 1px solid #27303d;
   color: #c5d5ed;
   font-size: 12px;
+}
+
+.code-box pre {
+  height: calc(100% - 24px);
+}
+
+.chat-box {
+  display: grid;
+  grid-template-rows: 24px 1fr auto;
+  gap: 8px;
+}
+
+.chat-list {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 8px;
+}
+
+.chat-item {
+  display: grid;
+  gap: 4px;
+}
+
+.chat-role {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #9fb2cd;
+}
+
+.chat-item.user .chat-role {
+  color: #8bc0ff;
+}
+
+.chat-item.assistant .chat-role {
+  color: #8de0bc;
+}
+
+.chat-form {
+  display: grid;
+  gap: 8px;
+}
+
+.chat-form textarea {
+  width: 100%;
+  min-height: 54px;
+  resize: vertical;
+  background: #121925;
+  color: #d5deea;
+  border: 1px solid #27303d;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+@media (max-width: 1200px) {
+  .eda-root {
+    grid-template-rows: 48px 1fr 420px;
+  }
+
+  .eda-bottom {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .log-box,
+  .code-box {
+    border-right: 0;
+    border-bottom: 1px solid #27303d;
+  }
+
+  .logs,
+  .code-box pre,
+  .chat-list {
+    max-height: 200px;
+  }
 }

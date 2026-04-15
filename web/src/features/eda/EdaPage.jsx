@@ -7,13 +7,19 @@ import {
   exportVerilog,
   runEvaluate,
   runGenerate,
-  runVerify
+  runVerify,
+  sendChat
 } from './services/mockActions';
 import { useEdaStore } from './state/useEdaStore';
 import { TopToolbar } from './components/TopToolbar';
 import { LibraryPanel } from './components/LibraryPanel';
 import { FlowCanvas } from './components/FlowCanvas';
 import { NodeInspector } from './components/NodeInspector';
+import { ChatPanel } from './components/ChatPanel';
+
+function mkChatId() {
+  return `chat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+}
 
 export function EdaPage() {
   const {
@@ -32,6 +38,10 @@ export function EdaPage() {
   } = useEdaStore();
   const [busy, setBusy] = useState(false);
   const [verilog, setVerilog] = useState('');
+  const [chatBusy, setChatBusy] = useState(false);
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatPayload, setChatPayload] = useState('{"source":"ui"}');
+  const [chatItems, setChatItems] = useState([]);
 
   async function runNode(kind) {
     if (!selected) {
@@ -42,7 +52,7 @@ export function EdaPage() {
     appendLog('info', `${kind} start`, selected.id);
     try {
       if (kind === 'generate') {
-        const out = await runGenerate(selected);
+        const out = await runGenerate(selected, nodes, edges);
         patchNode(selected.id, { status: 'success' });
         appendLog('ok', `gen: ${out.artifact}`, selected.id);
       } else if (kind === 'verify') {
@@ -50,7 +60,7 @@ export function EdaPage() {
         patchNode(selected.id, { status: 'success' });
         appendLog('ok', 'verify pass', selected.id);
       } else {
-        const ev = await runEvaluate(selected);
+        const ev = await runEvaluate(selected, nodes, edges);
         patchNode(selected.id, { status: 'success', eval: ev });
         appendLog('ok', `eval latency=${ev.latency} area=${ev.area}`, selected.id);
       }
@@ -75,6 +85,59 @@ export function EdaPage() {
     a.download = 'npu_top.v';
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function onSendChat() {
+    const text = chatMessage.trim();
+    if (!text) {
+      appendLog('warn', 'chat message is empty');
+      return;
+    }
+
+    let payload = {};
+    try {
+      payload = chatPayload.trim() ? JSON.parse(chatPayload) : {};
+    } catch {
+      appendLog('err', 'chat payload is not valid json');
+      return;
+    }
+
+    setChatBusy(true);
+    setChatItems((prev) => [
+      {
+        id: mkChatId(),
+        role: 'user',
+        text: JSON.stringify({ message: text, payload }, null, 2)
+      },
+      ...prev
+    ]);
+
+    try {
+      const out = await sendChat(text, payload);
+      setChatItems((prev) => [
+        {
+          id: mkChatId(),
+          role: 'assistant',
+          text: JSON.stringify(out, null, 2)
+        },
+        ...prev
+      ]);
+      appendLog('ok', 'chat response received');
+      setChatMessage('');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setChatItems((prev) => [
+        {
+          id: mkChatId(),
+          role: 'assistant',
+          text: JSON.stringify({ error: msg }, null, 2)
+        },
+        ...prev
+      ]);
+      appendLog('err', `chat failed: ${msg}`);
+    } finally {
+      setChatBusy(false);
+    }
   }
 
   return (
@@ -112,6 +175,15 @@ export function EdaPage() {
           <div className="panel-title">Verilog Preview</div>
           <pre>{verilog || '// export to preview'}</pre>
         </div>
+        <ChatPanel
+          items={chatItems}
+          message={chatMessage}
+          payload={chatPayload}
+          busy={chatBusy}
+          onChangeMessage={setChatMessage}
+          onChangePayload={setChatPayload}
+          onSend={onSendChat}
+        />
       </section>
     </main>
   );
