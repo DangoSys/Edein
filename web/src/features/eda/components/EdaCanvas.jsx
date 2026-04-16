@@ -30,18 +30,19 @@ export function EdaCanvas({
   dragging,
   viewport,
   selectionBox,
-  contextItem,
   contextMenu,
   onCanvasDrop,
   onSelect,
   onStartDrag,
   onMoveDrag,
   onEndDrag,
+  onStartResize,
   onCanvasMouseDown,
   onCanvasMouseMove,
   onCanvasMouseUp,
   onCanvasWheel,
   onCanvasContextMenu,
+  onToggleTile,
 }) {
   const canvasRef = useRef(null);
   useWindowDrag(
@@ -94,36 +95,27 @@ export function EdaCanvas({
         transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`,
       }}>
         <div className="canvas-grid" />
-        {contextItem ? (
-          <div
-            className="context-frame"
-            style={{
-              left: contextItem.x,
-              top: contextItem.y,
-              width: contextItem.w,
-              height: contextItem.h,
-            }}
-          />
-        ) : null}
-        {items.map((b) => {
+      {items.map((b) => {
           const left = clamp(b.x, 0, 100000);
           const top = clamp(b.y, 0, 100000);
           return (
             <div
               key={b.id}
-              className={`block ${selectedIds.includes(b.id) ? 'selected' : ''} ${b.kind} ${b.locked ? 'locked' : ''}`}
+              className={`block ${selectedIds.includes(b.id) ? 'selected' : ''} ${b.kind} ${b.locked ? 'locked' : ''} ${b.collapsed ? 'collapsed' : ''}`}
               style={{
                 left,
                 top,
-                width: b.w,
-                height: b.h,
+                width: b.renderW ?? b.w,
+                height: b.renderH ?? b.h,
                 background: b.color,
               }}
               onMouseDown={(e) => {
                 if (e.button !== 0) {
                   return;
                 }
-                onStartDrag(e, b, canvasRef.current?.getBoundingClientRect() || null);
+                if (e.altKey) {
+                  onStartDrag(e, b, canvasRef.current?.getBoundingClientRect() || null);
+                }
               }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -131,11 +123,25 @@ export function EdaCanvas({
               }}
               onDoubleClick={(e) => {
                 e.stopPropagation();
-                onSelect(b.id, e.shiftKey, true);
+                if (b.kind === 'tile') {
+                  onToggleTile(b.id);
+                }
               }}
             >
               <div className="block-title">{b.title}</div>
-              <div className="block-meta">{b.meta}</div>
+              {!b.collapsed && b.meta ? <div className="block-meta">{b.meta}</div> : null}
+              {selectedIds.includes(b.id) && b.kind !== 'ball' && !b.collapsed ? (
+                <div
+                  className="resize-handle-br"
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    if (e.button !== 0) {
+                      return;
+                    }
+                    onStartResize(e, b, canvasRef.current?.getBoundingClientRect() || null);
+                  }}
+                />
+              ) : null}
             </div>
           );
         })}
@@ -152,7 +158,12 @@ export function EdaCanvas({
         />
       ) : null}
       {contextMenu ? (
-        <div className="context-menu" style={{ left: contextMenu.x, top: contextMenu.y }}>
+        <div
+          className="context-menu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.preventDefault()}
+        >
           {contextMenu.items.map((item) => (
             <button
               key={item.id}

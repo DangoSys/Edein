@@ -1,23 +1,36 @@
 import React from 'react';
+import sendIcon from '../../../assets/send.svg';
 
 export function ChatPanel({
   items,
   message,
-  payload,
   busy,
   onChangeMessage,
-  onChangePayload,
   onSend
 }) {
+  const canSend = message.trim().length > 0 && !busy;
+  const empty = items.length === 0;
   return (
     <div className="chat-box">
-      <div className="panel-title">Workflow Chat</div>
-      <div className="chat-list">
-        {items.length === 0 ? <div className="hint">send a message</div> : null}
+      <div className="chat-header">
+        <div className="panel-title">Chat</div>
+      </div>
+      <div className={`chat-list ${empty ? 'empty' : ''}`}>
+        {empty ? (
+          <div className="chat-empty">
+            <div className="edein-icon" aria-hidden="true">
+              <div className="edein-face" />
+            </div>
+            <div className="edein-label">EDEIN</div>
+            <div className="chat-empty-text">Ask Edein anything to get started</div>
+          </div>
+        ) : null}
         {items.map((item) => (
           <div key={item.id} className={`chat-item ${item.role}`}>
             <div className="chat-role">{item.role}</div>
-            <pre>{item.text}</pre>
+            <div className="chat-bubble">
+              <div className="chat-text">{item.text}</div>
+            </div>
           </div>
         ))}
       </div>
@@ -25,14 +38,11 @@ export function ChatPanel({
         <textarea
           value={message}
           onChange={(e) => onChangeMessage(e.target.value)}
-          placeholder="natural language message"
+          placeholder="Ask Edein anything, @ to add a tile/core/ball, $ for skills"
         />
-        <textarea
-          value={payload}
-          onChange={(e) => onChangePayload(e.target.value)}
-          placeholder='json payload, e.g. {"intent":"run"}'
-        />
-        <button type="button" disabled={busy} onClick={onSend}>Send</button>
+        <button type="button" disabled={!canSend} onClick={onSend} className="send-btn">
+          <img src={sendIcon} alt="Send" />
+        </button>
       </div>
     </div>
   );
