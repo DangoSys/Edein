@@ -38,6 +38,27 @@
   cursor: pointer;
 }
 
+.upload-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #273142;
+  color: #d5deea;
+  border: 1px solid #3a4b63;
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.upload-btn input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 .tool-btns button:disabled,
 .chat-form button:disabled {
   opacity: 0.4;
@@ -195,6 +216,11 @@
   border-color: rgba(255, 255, 255, 0.35);
 }
 
+.block.locked {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .block-title {
   font-weight: 600;
   font-size: 13px;
@@ -210,6 +236,74 @@
   border: 1px solid rgba(123, 183, 255, 0.9);
   background: rgba(123, 183, 255, 0.12);
   pointer-events: none;
+}
+
+.context-menu {
+  position: absolute;
+  z-index: 40;
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  background: #111826;
+  border: 1px solid #2a3240;
+  border-radius: 8px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
+}
+
+.context-item {
+  background: #1b2432;
+  color: #d5deea;
+  border: 1px solid #2a3240;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+
+.context-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rename-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: rgba(6, 9, 14, 0.55);
+  display: grid;
+  place-items: center;
+}
+
+.rename-panel {
+  width: 320px;
+  padding: 16px;
+  background: #111826;
+  border: 1px solid #2a3240;
+  border-radius: 10px;
+  display: grid;
+  gap: 12px;
+}
+
+.rename-title {
+  font-size: 13px;
+  color: #9fb2cd;
+}
+
+.rename-panel input {
+  width: 100%;
+  background: #0f131c;
+  border: 1px solid #27303d;
+  color: #d5deea;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.rename-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .chat-box {

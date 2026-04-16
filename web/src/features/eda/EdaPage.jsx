@@ -56,6 +56,36 @@ function mkChatId() {
   return `chat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
+function packDesign(items, viewport, activeTileId, activeCoreId) {
+  return {
+    version: 1,
+    meta: {
+      createdAt: new Date().toISOString(),
+    },
+    viewport,
+    active: {
+      tileId: activeTileId,
+      coreId: activeCoreId,
+    },
+    items,
+  };
+}
+
+function unpackDesign(payload) {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('invalid json');
+  }
+  if (!Array.isArray(payload.items)) {
+    throw new Error('items missing');
+  }
+  return {
+    items: payload.items,
+    viewport: payload.viewport || { x: 32, y: 32, scale: 1 },
+    activeTileId: payload.active?.tileId || null,
+    activeCoreId: payload.active?.coreId || null,
+  };
+}
+
 export function EdaPage() {
   const [items, setItems] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -68,10 +98,23 @@ export function EdaPage() {
   const [selection, setSelection] = useState(null);
   const [activeTileId, setActiveTileId] = useState(null);
   const [activeCoreId, setActiveCoreId] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null);
+  const [renaming, setRenaming] = useState(null);
   const [chatBusy, setChatBusy] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [chatPayload, setChatPayload] = useState('{"source":"ui"}');
   const [chatItems, setChatItems] = useState([]);
+
+  useEffect(() => {
+    function handleKey(e) {
+      if (e.key === 'Escape') {
+        setContextMenu(null);
+        setSelection(null);
+      }
+    }
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, []);
 
   async function onSendChat() {
     const text = chatMessage.trim();
@@ -161,8 +204,8 @@ export function EdaPage() {
       title: 'Core',
       x: Math.max(8, world.x - w / 1.6),
       y: Math.max(8, world.y - h / 1.6),
-      w: Math.max(200, w * 1.4),
-      h: Math.max(140, h * 1.4),
+      w: Math.max(220, w * 1.4),
+      h: Math.max(160, h * 1.4),
       meta: `${tpl.type}`,
       color: '#1b3858',
       parentId: activeTileId || ROOT_ID,
@@ -170,10 +213,42 @@ export function EdaPage() {
     const ballInCore = {
       ...ball,
       x: core.x + 16,
-      y: core.y + 32,
+      y: core.y + 36,
       parentId: coreId,
     };
-    setItems((prev) => [...prev, core, ballInCore]);
+
+    if (activeTileId) {
+      setItems((prev) => [...prev, core, ballInCore]);
+      setActiveCoreId(coreId);
+      setSelectedIds([coreId]);
+      return;
+    }
+
+    const tileId = mkId('tile');
+    const tile = {
+      id: tileId,
+      kind: 'tile',
+      title: 'Tile',
+      x: Math.max(0, core.x - 24),
+      y: Math.max(0, core.y - 24),
+      w: core.w + 48,
+      h: core.h + 48,
+      meta: '1 core',
+      color: '#182a40',
+      parentId: ROOT_ID,
+    };
+    const coreInTile = {
+      ...core,
+      x: core.x,
+      y: core.y,
+      parentId: tileId,
+    };
+    const ballInTileCore = {
+      ...ballInCore,
+      parentId: coreId,
+    };
+    setItems((prev) => [...prev, tile, coreInTile, ballInTileCore]);
+    setActiveTileId(tileId);
     setActiveCoreId(coreId);
     setSelectedIds([coreId]);
   }
@@ -205,9 +280,9 @@ export function EdaPage() {
         return prev;
       }
       const delta = { x: x - moving.x, y: y - moving.y };
-      const movingIds = selectedIds.includes(moving.id) ? selectedIds : [moving.id];
-      return prev.map((b) =>
-        movingIds.includes(b.id)
+        const movingIds = selectedIds.includes(moving.id) ? selectedIds : [moving.id];
+        return prev.map((b) =>
+        movingIds.includes(b.id) && !b.locked
           ? {
               ...b,
               x: Math.max(0, b.x + delta.x),
@@ -220,6 +295,30 @@ export function EdaPage() {
 
   function onEndDrag() {
     setDragging(null);
+    setItems((prev) => {
+      const map = new Map(prev.map((b) => [b.id, b]));
+      return prev.map((b) => {
+        if (!selectedIds.includes(b.id) || !b.parentId || b.locked) {
+          return b;
+        }
+        const parent = map.get(b.parentId);
+        if (!parent) {
+          return b;
+        }
+        const inside =
+          b.x >= parent.x &&
+          b.y >= parent.y &&
+          b.x + b.w <= parent.x + parent.w &&
+          b.y + b.h <= parent.y + parent.h;
+        if (inside) {
+          return b;
+        }
+        return {
+          ...b,
+          parentId: parent.parentId || ROOT_ID,
+        };
+      });
+    });
   }
 
   const leftStyle = useMemo(() => {
@@ -248,6 +347,7 @@ export function EdaPage() {
   function onCanvasMouseDown(e) {
     const bounds = e.currentTarget.getBoundingClientRect();
     if (e.button === 2) {
+      setContextMenu(null);
       setPanning({
         startX: e.clientX,
         startY: e.clientY,
@@ -260,6 +360,7 @@ export function EdaPage() {
       setSelectedIds([]);
     }
     if (e.button === 0) {
+      setContextMenu(null);
       setSelection({
         startX: e.clientX - bounds.left,
         startY: e.clientY - bounds.top,
@@ -300,6 +401,10 @@ export function EdaPage() {
         w: Math.abs(selection.endX - selection.startX),
         h: Math.abs(selection.endY - selection.startY),
       };
+      if (rect.w < 6 || rect.h < 6) {
+        setSelection(null);
+        return;
+      }
       const worldStart = canvasToWorld(rect.x, rect.y, viewport);
       const worldEnd = canvasToWorld(rect.x + rect.w, rect.y + rect.h, viewport);
       const worldRect = {
@@ -317,7 +422,10 @@ export function EdaPage() {
           b.y + b.h <= worldRect.y + worldRect.h
         )
         .map((b) => b.id);
-      setSelectedIds(next);
+      if (next.length > 0) {
+        const kind = activeTileId ? 'core' : 'tile';
+        createGroup(kind, next);
+      }
       setSelection(null);
       return;
     }
@@ -337,10 +445,47 @@ export function EdaPage() {
 
   function onCanvasContextMenu(e) {
     e.preventDefault();
+    const bounds = e.currentTarget.getBoundingClientRect();
+    const localX = e.clientX - bounds.left;
+    const localY = e.clientY - bounds.top;
+    const world = canvasToWorld(localX, localY, viewport);
+    const hit = visibleItems.find(
+      (b) =>
+        world.x >= b.x &&
+        world.x <= b.x + b.w &&
+        world.y >= b.y &&
+        world.y <= b.y + b.h
+    );
+    const targetIds = hit ? [hit.id] : selectedIds;
+    if (hit && !selectedIds.includes(hit.id)) {
+      setSelectedIds([hit.id]);
+    }
+    if (!hit && selectedIds.length === 0) {
+      setContextMenu(null);
+      return;
+    }
+    if (selectedIds.length > 0 && !hit) {
+      setContextMenu({
+        x: localX,
+        y: localY,
+        items: buildContextItems(selectedIds),
+      });
+      return;
+    }
+    if (!hit) {
+      setContextMenu(null);
+      return;
+    }
+    setContextMenu({
+      x: localX,
+      y: localY,
+      items: buildContextItems(targetIds),
+    });
   }
 
   function onSelect(id, additive, expand) {
     if (!id) {
+      setContextMenu(null);
       setSelectedIds([]);
       return;
     }
@@ -363,8 +508,164 @@ export function EdaPage() {
     }
   }
 
-  function createGroup(kind) {
-    if (selectedIds.length === 0) {
+  function buildContextItems(targetIds) {
+    const list = items.filter((b) => targetIds.includes(b.id));
+    const single = list.length === 1 ? list[0] : null;
+    const hasTarget = list.length > 0;
+    const isCore = single?.kind === 'core';
+    const isTile = single?.kind === 'tile';
+    const canMakeTile = hasTarget && !activeTileId && list.every((b) => b.parentId === ROOT_ID && !b.locked);
+    const canMakeCore = hasTarget && !!activeTileId && !activeCoreId && list.every((b) => b.parentId === activeTileId && !b.locked);
+    return [
+      {
+        id: 'rename',
+        label: 'Rename',
+        disabled: !single,
+        onClick: () => {
+          if (!single) {
+            return;
+          }
+          setRenaming({ id: single.id, value: single.title });
+          setContextMenu(null);
+        },
+      },
+      {
+        id: 'delete',
+        label: 'Delete',
+        disabled: !hasTarget || list.some((b) => b.locked),
+        onClick: () => {
+          if (!hasTarget) {
+            return;
+          }
+          deleteItems(targetIds);
+          setContextMenu(null);
+        },
+      },
+      {
+        id: 'expand',
+        label: isTile ? 'Open Tile' : isCore ? 'Open Core' : 'Open',
+        disabled: !isTile && !isCore,
+        onClick: () => {
+          if (!single) {
+            return;
+          }
+          if (single.kind === 'tile') {
+            setActiveTileId((prev) => (prev === single.id ? null : single.id));
+            setActiveCoreId(null);
+          }
+          if (single.kind === 'core') {
+            setActiveCoreId((prev) => (prev === single.id ? null : single.id));
+          }
+          setContextMenu(null);
+        },
+      },
+      {
+        id: 'lock',
+        label: single?.locked ? 'Unlock' : 'Lock',
+        disabled: !single,
+        onClick: () => {
+          if (!single) {
+            return;
+          }
+          setItems((prev) =>
+            prev.map((b) =>
+              b.id === single.id ? { ...b, locked: !b.locked } : b
+            )
+          );
+          setContextMenu(null);
+        },
+      },
+      {
+        id: 'set-tile',
+        label: 'Make Tile',
+        disabled: !canMakeTile,
+        onClick: () => {
+          createGroup('tile', targetIds);
+          setContextMenu(null);
+        },
+      },
+      {
+        id: 'set-core',
+        label: 'Make Core',
+        disabled: !canMakeCore,
+        onClick: () => {
+          createGroup('core', targetIds);
+          setContextMenu(null);
+        },
+      },
+    ];
+  }
+
+  function deleteItems(ids) {
+    let deleted = [];
+    setItems((prev) => {
+      const toDelete = new Set();
+      ids.forEach((id) => {
+        const item = prev.find((b) => b.id === id);
+        if (!item || item.locked) {
+          return;
+        }
+        toDelete.add(id);
+      });
+      let changed = true;
+      while (changed) {
+        changed = false;
+        prev.forEach((b) => {
+          if (b.parentId && toDelete.has(b.parentId) && !toDelete.has(b.id)) {
+            toDelete.add(b.id);
+            changed = true;
+          }
+        });
+      }
+      deleted = Array.from(toDelete);
+      return prev.filter((b) => !toDelete.has(b.id) || b.locked);
+    });
+    setSelectedIds((prev) => prev.filter((id) => !deleted.includes(id)));
+    if (deleted.includes(activeCoreId)) {
+      setActiveCoreId(null);
+    }
+    if (deleted.includes(activeTileId)) {
+      setActiveTileId(null);
+      setActiveCoreId(null);
+    }
+  }
+
+  function onExportJson() {
+    const payload = packDesign(items, viewport, activeTileId, activeCoreId);
+    const txt = JSON.stringify(payload, null, 2);
+    const blob = new Blob([txt], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'edein-design.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function onImportJson(file) {
+    if (!file) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const payload = JSON.parse(String(reader.result || ''));
+        const parsed = unpackDesign(payload);
+        setItems(parsed.items);
+        setViewport(parsed.viewport);
+        setActiveTileId(parsed.activeTileId);
+        setActiveCoreId(parsed.activeCoreId);
+        setSelectedIds([]);
+      } catch {
+        // ignore invalid file
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function createGroup(kind, ids) {
+    const targetIds = ids || selectedIds;
+    if (targetIds.length === 0) {
       return;
     }
     if (kind === 'tile' && activeTileId) {
@@ -376,7 +677,10 @@ export function EdaPage() {
     if (kind === 'core' && activeCoreId) {
       return;
     }
-    const selected = items.filter((b) => selectedIds.includes(b.id));
+    const selected = items.filter((b) => targetIds.includes(b.id) && !b.locked);
+    if (selected.length === 0) {
+      return;
+    }
     const parentId = selected[0]?.parentId || ROOT_ID;
     const sameParent = selected.every((b) => b.parentId === parentId);
     if (!sameParent) {
@@ -408,7 +712,7 @@ export function EdaPage() {
     };
     setItems((prev) => [
       ...prev.map((b) =>
-        selectedIds.includes(b.id)
+        targetIds.includes(b.id)
           ? {
               ...b,
               parentId: groupId,
@@ -477,15 +781,14 @@ export function EdaPage() {
         onCenter={() => {
           setViewport((prev) => ({ ...prev, x: 32, y: 32, scale: 1 }));
         }}
+        onExport={onExportJson}
+        onImport={onImportJson}
         onClear={() => {
           setItems([]);
           setSelectedIds([]);
           setActiveTileId(null);
           setActiveCoreId(null);
         }}
-        onMakeTile={() => createGroup('tile')}
-        onMakeCore={() => createGroup('core')}
-        activeTileId={activeTileId}
       />
       <section className="eda-body">
         <div className="left-wrap" style={leftStyle}>
@@ -496,6 +799,55 @@ export function EdaPage() {
           />
           <div className="resize-handle" onMouseDown={onResizeStart} />
         </div>
+        {renaming ? (
+          <div className="rename-overlay" onMouseDown={() => setRenaming(null)}>
+            <div className="rename-panel" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="rename-title">Rename</div>
+              <input
+                value={renaming.value}
+                onChange={(e) => setRenaming((prev) => ({ ...prev, value: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const name = renaming.value.trim();
+                    if (name) {
+                      setItems((prev) =>
+                        prev.map((b) =>
+                          b.id === renaming.id ? { ...b, title: name } : b
+                        )
+                      );
+                    }
+                    setRenaming(null);
+                  }
+                  if (e.key === 'Escape') {
+                    setRenaming(null);
+                  }
+                }}
+                autoFocus
+              />
+              <div className="rename-actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const name = renaming.value.trim();
+                    if (name) {
+                      setItems((prev) =>
+                        prev.map((b) =>
+                          b.id === renaming.id ? { ...b, title: name } : b
+                        )
+                      );
+                    }
+                    setRenaming(null);
+                  }}
+                >
+                  Save
+                </button>
+                <button type="button" className="ghost-btn" onClick={() => setRenaming(null)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         <EdaCanvas
           items={visibleItems}
           selectedIds={selectedIds}
@@ -503,6 +855,7 @@ export function EdaPage() {
           viewport={viewport}
           selectionBox={selectionBox}
           contextItem={contextItem}
+          contextMenu={contextMenu}
           onCanvasDrop={onCanvasDrop}
           onSelect={onSelect}
           onStartDrag={onStartDrag}

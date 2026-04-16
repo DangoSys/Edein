@@ -31,6 +31,7 @@ export function EdaCanvas({
   viewport,
   selectionBox,
   contextItem,
+  contextMenu,
   onCanvasDrop,
   onSelect,
   onStartDrag,
@@ -110,7 +111,7 @@ export function EdaCanvas({
           return (
             <div
               key={b.id}
-              className={`block ${selectedIds.includes(b.id) ? 'selected' : ''} ${b.kind}`}
+              className={`block ${selectedIds.includes(b.id) ? 'selected' : ''} ${b.kind} ${b.locked ? 'locked' : ''}`}
               style={{
                 left,
                 top,
@@ -149,6 +150,21 @@ export function EdaCanvas({
             height: selectionBox.h,
           }}
         />
+      ) : null}
+      {contextMenu ? (
+        <div className="context-menu" style={{ left: contextMenu.x, top: contextMenu.y }}>
+          {contextMenu.items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className="context-item"
+              onClick={item.onClick}
+              disabled={item.disabled}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
       ) : null}
     </section>
   );
