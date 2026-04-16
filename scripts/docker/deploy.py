@@ -7,8 +7,8 @@ from pathlib import Path
 
 def main() -> None:
     repo_root = Path(__file__).resolve().parents[2]
-    compose_file = repo_root / "server" / "sandbox" / "docker-compose.yml"
-    command = ["docker", "compose", "-f", str(compose_file), "up", "-d"]
+    compose_file = repo_root / "scripts" / "docker" / "docker-compose.yml"
+    command = ["docker", "compose", "-f", str(compose_file), "up", "-d", "--build"]
     subprocess.run(command, check=True, cwd=repo_root)
 
 

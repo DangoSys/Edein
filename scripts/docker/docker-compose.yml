@@ -1,0 +1,36 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: edein-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - edein_mongo_data:/data/db
+
+  api:
+    build:
+      context: ../..
+      dockerfile: scripts/docker/Dockerfile.api
+    container_name: edein-api
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    ports:
+      - "8000:8000"
+
+  web:
+    build:
+      context: ../..
+      dockerfile: scripts/docker/Dockerfile.web
+      args:
+        VITE_API_BASE: http://localhost:8000
+    container_name: edein-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "3000:80"
+
+volumes:
+  edein_mongo_data:
