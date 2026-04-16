@@ -1,26 +1,56 @@
 export const ballCatalog = [
   {
-    type: 'GEMM',
-    title: 'GEMM Ball',
-    desc: 'matrix multiply',
+    type: 'VecBall',
+    title: 'Vec Ball',
+    desc: 'vector ops',
+    cfg: { lanes: 16, width: 128 }
+  },
+  {
+    type: 'ReluBall',
+    title: 'Relu Ball',
+    desc: 'activation',
+    cfg: { size: 65536 }
+  },
+  {
+    type: 'TransposeBall',
+    title: 'Transpose Ball',
+    desc: 'matrix transpose',
+    cfg: { h: 64, w: 64 }
+  },
+  {
+    type: 'Im2colBall',
+    title: 'Im2col Ball',
+    desc: 'im2col transform',
+    cfg: { h: 56, w: 56, k: 3 }
+  },
+  {
+    type: 'SystolicArrayBall',
+    title: 'Systolic Array',
+    desc: 'systolic array',
     cfg: { m: 128, n: 128, k: 128 }
   },
   {
-    type: 'CONV',
-    title: 'Conv Ball',
-    desc: '2D convolution',
-    cfg: { h: 56, w: 56, cin: 64, cout: 64, k: 3 }
+    type: 'QuantBall',
+    title: 'Quant Ball',
+    desc: 'quantization',
+    cfg: { bits: 8, size: 32768 }
   },
   {
-    type: 'ACT',
-    title: 'Act Ball',
-    desc: 'activation',
-    cfg: { kind: 'relu', size: 65536 }
+    type: 'DequantBall',
+    title: 'Dequant Ball',
+    desc: 'dequantization',
+    cfg: { bits: 8, size: 32768 }
   },
   {
-    type: 'POOL',
-    title: 'Pool Ball',
-    desc: 'pooling',
-    cfg: { h: 56, w: 56, ch: 64, k: 2 }
+    type: 'GemminiBall',
+    title: 'Gemmini Ball',
+    desc: 'gemmini compute',
+    cfg: { pe: 16, banks: 8 }
+  },
+  {
+    type: 'TraceBall',
+    title: 'Trace Ball',
+    desc: 'trace/debug',
+    cfg: { depth: 1024 }
   }
 ];
