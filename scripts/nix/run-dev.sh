@@ -7,14 +7,10 @@ EDEIN_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd)"
 WEB_PORT="${1:-3000}"
 API_PORT="${2:-8000}"
 
-MONGO_DBPATH=".local/mongo"
-MONGO_LOG="$MONGO_DBPATH/mongod.log"
 MONGO_STARTED=0
 
 
 cd $EDEIN_ROOT
-
-mkdir -p $MONGO_DBPATH
 
 #===--- Building Wasm ---===#
 wasm-pack build web/wasm --target web --out-dir ../pkg
@@ -34,11 +30,8 @@ uv sync --no-dev
 # server
 #===------------------------===#
 cd $EDEIN_ROOT
-if mongod --dbpath "$MONGO_DBPATH" --bind_ip 127.0.0.1 --port 27017 --logpath "$MONGO_LOG" --fork; then
+if bash ./scripts/nix/mongo-dev.sh start; then
   MONGO_STARTED=1
-  echo "==> started mongo on :27017"
-else
-  echo "==> mongo already running or failed to start (see $MONGO_LOG)"
 fi
 
 cd server
@@ -49,7 +42,7 @@ cd $EDEIN_ROOT
 cleanup() {
   kill "$API_PID" 2>/dev/null || true
   if [ "$MONGO_STARTED" -eq 1 ]; then
-    mongod --shutdown --dbpath "$MONGO_DBPATH" >/dev/null 2>&1 || true
+    bash ./scripts/nix/mongo-dev.sh stop >/dev/null 2>&1 || true
   fi
   exit
 }
